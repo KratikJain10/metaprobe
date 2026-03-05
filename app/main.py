@@ -14,17 +14,16 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter
+from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.cache import RedisCache
 from app.config import settings
 from app.database import close_mongodb_connection, connect_to_mongodb
-from app.metrics import setup_metrics
 from app.middleware import CorrelationIdMiddleware, TimingMiddleware
 from app.repositories.metadata_repo import MetadataRepository
 from app.routes.metadata import router as metadata_router
@@ -117,8 +116,10 @@ app.add_middleware(
 
 # Rate limiting
 app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── Prometheus Metrics ─────────────────────────────────────────────────────
+from app.metrics import setup_metrics
 
 setup_metrics(app)
 
@@ -128,14 +129,12 @@ app.include_router(metadata_router)
 # Import and register analysis + websocket routes (created in Phase 2/3)
 try:
     from app.routes.analysis import router as analysis_router
-
     app.include_router(analysis_router)
 except ImportError:
     pass
 
 try:
     from app.routes.websocket import router as ws_router
-
     app.include_router(ws_router)
 except ImportError:
     pass
@@ -144,30 +143,8 @@ except ImportError:
 # ── Global Exception Handlers ──────────────────────────────────────────────
 
 
-@app.exception_handler(RateLimitExceeded)
-async def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
-    """Custom handler for rate limit errors, returning JSONResponse."""
-    correlation_id = getattr(request.state, "correlation_id", "unknown")
-    logger.warning(
-        "Rate limit exceeded for %s %s [correlation_id=%s]",
-        request.method,
-        request.url,
-        correlation_id,
-    )
-    response = JSONResponse(
-        status_code=429,
-        content={
-            "detail": f"Rate limit exceeded: {exc.detail}",
-            "error_type": "rate_limit_exceeded",
-            "correlation_id": correlation_id,
-        },
-    )
-    response.headers["Retry-After"] = "60"
-    return response
-
-
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception) -> Response:
+async def unhandled_exception_handler(request: Request, exc: Exception):
     """Catch-all handler to prevent 500 errors from leaking stack traces."""
     correlation_id = getattr(request.state, "correlation_id", "unknown")
     logger.exception(
@@ -209,7 +186,6 @@ async def health_check(request: Request):
     mongo_status = "connected"
     try:
         from app.database import get_database
-
         db = get_database()
         await db.command("ping")
     except Exception:

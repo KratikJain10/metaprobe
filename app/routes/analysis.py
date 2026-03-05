@@ -67,7 +67,7 @@ async def analyze_url(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Failed to collect metadata: {exc.reason}",
-        ) from exc
+        )
 
     # Store the collected metadata
     await repo.upsert_metadata(document)

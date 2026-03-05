@@ -74,7 +74,7 @@ async def test_client(mock_db, mock_cache, repository, task_manager) -> AsyncGen
 
     # Inject test dependencies into app state
     app.state.repository = repository
-    app.state.background_tasks = task_manager
+    app.state.task_manager = task_manager
     app.state.cache = mock_cache
 
     transport = ASGITransport(app=app)

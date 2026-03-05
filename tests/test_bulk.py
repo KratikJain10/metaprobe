@@ -156,7 +156,8 @@ class TestDeleteMetadata:
         await repository.upsert_metadata(doc)
 
         response = await test_client.delete("/metadata", params={"url": url})
-        assert response.status_code == 204
+        assert response.status_code == 200
+        assert "deleted" in response.json()["message"].lower()
 
     async def test_delete_nonexistent_returns_404(self, test_client):
         """Delete should return 404 for non-existent URL."""

@@ -7,7 +7,7 @@ Redis cache integration for read-through caching.
 """
 
 import logging
-from typing import Any, cast
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -88,23 +88,23 @@ class MetadataRepository:
 
         logger.info("Upserted metadata for URL: %s", metadata.url)
 
-    async def delete_metadata(self, url: str) -> bool:
+    async def delete_by_url(self, url: str) -> bool:
         """
-        Delete metadata for a given URL.
+        Delete a metadata record by URL.
 
         Also invalidates the cache entry.
         """
         result = await self._collection.delete_one({"url": url})
 
         # Invalidate cache
-        if self._cache:
+        if self._cache is not None:
             await self._cache.invalidate(url)
 
-        return cast(bool, result.deleted_count > 0)
+        return result.deleted_count > 0
 
-    async def count_metadata(self) -> int:
-        """Count total metadata records."""
-        return cast(int, await self._collection.count_documents({}))
+    async def count(self) -> int:
+        """Return the total number of metadata records."""
+        return await self._collection.count_documents({})
 
     async def list_metadata(
         self,
