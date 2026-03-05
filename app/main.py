@@ -128,12 +128,14 @@ app.include_router(metadata_router)
 # Import and register analysis + websocket routes (created in Phase 2/3)
 try:
     from app.routes.analysis import router as analysis_router
+
     app.include_router(analysis_router)
 except ImportError:
     pass
 
 try:
     from app.routes.websocket import router as ws_router
+
     app.include_router(ws_router)
 except ImportError:
     pass
@@ -185,6 +187,7 @@ async def health_check(request: Request):
     mongo_status = "connected"
     try:
         from app.database import get_database
+
         db = get_database()
         await db.command("ping")
     except Exception:

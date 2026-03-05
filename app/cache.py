@@ -76,9 +76,7 @@ class RedisCache:
             logger.warning("Redis GET error for %s: %s", key, exc)
             return None
 
-    async def set(
-        self, key: str, value: dict[str, Any], ttl: int | None = None
-    ) -> bool:
+    async def set(self, key: str, value: dict[str, Any], ttl: int | None = None) -> bool:
         """
         Store a value in cache with optional TTL (seconds).
 

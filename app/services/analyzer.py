@@ -137,60 +137,70 @@ class SecurityAnalyzer:
         # 3. Technology fingerprinting
         technologies = self._detect_technologies(lower_headers)
         if technologies:
-            findings.append(SecurityFinding(
-                category="info",
-                severity="info",
-                title="Technology Information Disclosure",
-                description=(
-                    f"The following technologies were detected from response headers: "
-                    f"{', '.join(technologies)}. This information can help attackers "
-                    f"identify known vulnerabilities."
-                ),
-                recommendation=(
-                    "Consider removing or masking technology-revealing headers "
-                    "like 'Server' and 'X-Powered-By' in production."
-                ),
-            ))
+            findings.append(
+                SecurityFinding(
+                    category="info",
+                    severity="info",
+                    title="Technology Information Disclosure",
+                    description=(
+                        f"The following technologies were detected from response headers: "
+                        f"{', '.join(technologies)}. This information can help attackers "
+                        f"identify known vulnerabilities."
+                    ),
+                    recommendation=(
+                        "Consider removing or masking technology-revealing headers "
+                        "like 'Server' and 'X-Powered-By' in production."
+                    ),
+                )
+            )
 
         # 4. SSL/TLS analysis
         ssl_info = self._check_ssl(url)
         if ssl_info and ssl_info.get("error"):
-            findings.append(SecurityFinding(
-                category="ssl",
-                severity="critical",
-                title="SSL/TLS Certificate Issue",
-                description=f"SSL certificate error: {ssl_info['error']}",
-                recommendation="Ensure a valid SSL/TLS certificate is installed and not expired.",
-            ))
+            findings.append(
+                SecurityFinding(
+                    category="ssl",
+                    severity="critical",
+                    title="SSL/TLS Certificate Issue",
+                    description=f"SSL certificate error: {ssl_info['error']}",
+                    recommendation="Ensure a valid SSL/TLS certificate is installed and not expired.",
+                )
+            )
         elif ssl_info and ssl_info.get("days_until_expiry") is not None:
             days = int(ssl_info["days_until_expiry"])  # type: ignore[call-overload]
             if days < 0:
-                findings.append(SecurityFinding(
-                    category="ssl",
-                    severity="critical",
-                    title="SSL Certificate Expired",
-                    description=f"The SSL certificate expired {abs(days)} days ago.",
-                    recommendation="Renew the SSL certificate immediately.",
-                ))
+                findings.append(
+                    SecurityFinding(
+                        category="ssl",
+                        severity="critical",
+                        title="SSL Certificate Expired",
+                        description=f"The SSL certificate expired {abs(days)} days ago.",
+                        recommendation="Renew the SSL certificate immediately.",
+                    )
+                )
             elif days < 30:
-                findings.append(SecurityFinding(
-                    category="ssl",
-                    severity="high",
-                    title="SSL Certificate Expiring Soon",
-                    description=f"The SSL certificate expires in {days} days.",
-                    recommendation="Renew the SSL certificate before expiry to avoid service disruption.",
-                ))
+                findings.append(
+                    SecurityFinding(
+                        category="ssl",
+                        severity="high",
+                        title="SSL Certificate Expiring Soon",
+                        description=f"The SSL certificate expires in {days} days.",
+                        recommendation="Renew the SSL certificate before expiry to avoid service disruption.",
+                    )
+                )
 
         # Check for HTTPS
         parsed = urlparse(url)
         if parsed.scheme != "https":
-            findings.append(SecurityFinding(
-                category="ssl",
-                severity="critical",
-                title="No HTTPS",
-                description="The URL does not use HTTPS. All traffic is transmitted in plaintext.",
-                recommendation="Migrate to HTTPS with a valid TLS certificate.",
-            ))
+            findings.append(
+                SecurityFinding(
+                    category="ssl",
+                    severity="critical",
+                    title="No HTTPS",
+                    description="The URL does not use HTTPS. All traffic is transmitted in plaintext.",
+                    recommendation="Migrate to HTTPS with a valid TLS certificate.",
+                )
+            )
 
         # Calculate score and grade
         score = self._calculate_score(findings)
@@ -208,32 +218,34 @@ class SecurityAnalyzer:
             analyzed_at=datetime.now(UTC),
         )
 
-    def _check_security_headers(
-        self, headers: dict[str, str]
-    ) -> list[SecurityFinding]:
+    def _check_security_headers(self, headers: dict[str, str]) -> list[SecurityFinding]:
         """Check for missing or misconfigured security headers."""
         findings: list[SecurityFinding] = []
 
         for header_name, severity, title, description, recommendation in SECURITY_HEADERS:
             if header_name not in headers:
-                findings.append(SecurityFinding(
-                    category="header",
-                    severity=severity,
-                    title=title,
-                    description=description,
-                    recommendation=recommendation,
-                ))
+                findings.append(
+                    SecurityFinding(
+                        category="header",
+                        severity=severity,
+                        title=title,
+                        description=description,
+                        recommendation=recommendation,
+                    )
+                )
 
         # Check for insecure HSTS configuration
         hsts = headers.get("strict-transport-security", "")
         if hsts and "includesubdomains" not in hsts.lower():
-                findings.append(SecurityFinding(
+            findings.append(
+                SecurityFinding(
                     category="header",
                     severity="low",
                     title="HSTS Missing includeSubDomains",
                     description="The HSTS header does not include the includeSubDomains directive.",
                     recommendation="Add 'includeSubDomains' to the HSTS header for complete coverage.",
-                ))
+                )
+            )
 
         return findings
 
@@ -265,40 +277,46 @@ class SecurityAnalyzer:
                 continue
 
             if "secure" not in cookie_header:
-                findings.append(SecurityFinding(
-                    category="cookie",
-                    severity="high",
-                    title=f"Cookie '{name}' Missing Secure Flag",
-                    description=(
-                        f"The cookie '{name}' is not marked as Secure. "
-                        f"It may be transmitted over unencrypted HTTP connections."
-                    ),
-                    recommendation=f"Add the 'Secure' flag to the '{name}' cookie.",
-                ))
+                findings.append(
+                    SecurityFinding(
+                        category="cookie",
+                        severity="high",
+                        title=f"Cookie '{name}' Missing Secure Flag",
+                        description=(
+                            f"The cookie '{name}' is not marked as Secure. "
+                            f"It may be transmitted over unencrypted HTTP connections."
+                        ),
+                        recommendation=f"Add the 'Secure' flag to the '{name}' cookie.",
+                    )
+                )
 
             if "httponly" not in cookie_header:
-                findings.append(SecurityFinding(
-                    category="cookie",
-                    severity="medium",
-                    title=f"Cookie '{name}' Missing HttpOnly Flag",
-                    description=(
-                        f"The cookie '{name}' is not marked as HttpOnly. "
-                        f"JavaScript can access this cookie, increasing XSS risk."
-                    ),
-                    recommendation=f"Add the 'HttpOnly' flag to the '{name}' cookie.",
-                ))
+                findings.append(
+                    SecurityFinding(
+                        category="cookie",
+                        severity="medium",
+                        title=f"Cookie '{name}' Missing HttpOnly Flag",
+                        description=(
+                            f"The cookie '{name}' is not marked as HttpOnly. "
+                            f"JavaScript can access this cookie, increasing XSS risk."
+                        ),
+                        recommendation=f"Add the 'HttpOnly' flag to the '{name}' cookie.",
+                    )
+                )
 
             if "samesite" not in cookie_header:
-                findings.append(SecurityFinding(
-                    category="cookie",
-                    severity="medium",
-                    title=f"Cookie '{name}' Missing SameSite Attribute",
-                    description=(
-                        f"The cookie '{name}' does not have a SameSite attribute. "
-                        f"It may be sent in cross-site requests (CSRF risk)."
-                    ),
-                    recommendation=f"Add 'SameSite=Lax' or 'SameSite=Strict' to the '{name}' cookie.",
-                ))
+                findings.append(
+                    SecurityFinding(
+                        category="cookie",
+                        severity="medium",
+                        title=f"Cookie '{name}' Missing SameSite Attribute",
+                        description=(
+                            f"The cookie '{name}' does not have a SameSite attribute. "
+                            f"It may be sent in cross-site requests (CSRF risk)."
+                        ),
+                        recommendation=f"Add 'SameSite=Lax' or 'SameSite=Strict' to the '{name}' cookie.",
+                    )
+                )
 
         return findings
 
@@ -348,7 +366,11 @@ class SecurityAnalyzer:
                 for part in issuer_parts:
                     if isinstance(part, tuple):
                         for entry in part:
-                            if isinstance(entry, tuple) and len(entry) == 2 and entry[0] == "organizationName":
+                            if (
+                                isinstance(entry, tuple)
+                                and len(entry) == 2
+                                and entry[0] == "organizationName"
+                            ):
                                 issuer = str(entry[1])
                                 break
 
@@ -367,7 +389,11 @@ class SecurityAnalyzer:
                 for part in subject_parts:
                     if isinstance(part, tuple):
                         for entry in part:
-                            if isinstance(entry, tuple) and len(entry) == 2 and entry[0] == "commonName":
+                            if (
+                                isinstance(entry, tuple)
+                                and len(entry) == 2
+                                and entry[0] == "commonName"
+                            ):
                                 subject = str(entry[1])
                                 break
 
@@ -415,9 +441,7 @@ class SecurityAnalyzer:
             return "D"
         return "F"
 
-    def _summarize_findings(
-        self, findings: list[SecurityFinding]
-    ) -> dict[str, int]:
+    def _summarize_findings(self, findings: list[SecurityFinding]) -> dict[str, int]:
         """Count findings by severity level."""
         summary = {
             "critical": 0,

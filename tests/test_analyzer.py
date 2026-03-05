@@ -69,9 +69,7 @@ class TestSecurityHeaders:
             headers={"content-type": "text/html"},
             cookies={},
         )
-        hsts_findings = [
-            f for f in report.findings if "HSTS" in f.title and "Missing" in f.title
-        ]
+        hsts_findings = [f for f in report.findings if "HSTS" in f.title and "Missing" in f.title]
         assert len(hsts_findings) == 1
         assert hsts_findings[0].severity == "high"
 

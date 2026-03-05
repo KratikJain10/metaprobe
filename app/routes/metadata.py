@@ -105,7 +105,10 @@ async def create_metadata(
     response_model=MetadataResponse,
     responses={
         200: {"model": MetadataResponse, "description": "Metadata found and returned."},
-        202: {"model": AcceptedResponse, "description": "Metadata not found; collection scheduled."},
+        202: {
+            "model": AcceptedResponse,
+            "description": "Metadata not found; collection scheduled.",
+        },
         422: {"model": ErrorResponse, "description": "Invalid URL format."},
     },
     summary="Retrieve metadata for a URL",
@@ -240,9 +243,7 @@ async def list_metadata(
     repo: MetadataRepository = Depends(get_repository),
 ) -> MetadataListResponse:
     """List all collected metadata with pagination and filtering."""
-    items, total = await repo.list_metadata(
-        skip=skip, limit=limit, search=search, sort=sort
-    )
+    items, total = await repo.list_metadata(skip=skip, limit=limit, search=search, sort=sort)
 
     results = [
         MetadataResponse(
@@ -294,9 +295,7 @@ async def bulk_collect(
             except CollectionError as exc:
                 return BulkResultItem(url=url, status="failed", error=exc.reason)
             except Exception as exc:
-                return BulkResultItem(
-                    url=url, status="failed", error=str(exc)
-                )
+                return BulkResultItem(url=url, status="failed", error=str(exc))
 
     urls = [str(u) for u in request.urls]
     tasks = [_collect_one(url) for url in urls]
@@ -333,12 +332,14 @@ async def export_metadata(
         writer = csv.writer(output)
         writer.writerow(["url", "collected_at", "headers", "cookies"])
         for doc in items:
-            writer.writerow([
-                doc.url,
-                doc.collected_at.isoformat(),
-                str(doc.headers),
-                str(doc.cookies),
-            ])
+            writer.writerow(
+                [
+                    doc.url,
+                    doc.collected_at.isoformat(),
+                    str(doc.headers),
+                    str(doc.cookies),
+                ]
+            )
         output.seek(0)
         return StreamingResponse(
             iter([output.getvalue()]),
