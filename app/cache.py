@@ -68,7 +68,8 @@ class RedisCache:
             data = await self._redis.get(f"metaprobe:{key}")
             if data is not None:
                 logger.debug("Cache HIT for key: %s", key)
-                return json.loads(data)
+                result: dict[str, Any] = json.loads(data)
+                return result
             logger.debug("Cache MISS for key: %s", key)
             return None
         except Exception as exc:
@@ -109,7 +110,7 @@ class RedisCache:
         try:
             result = await self._redis.delete(f"metaprobe:{key}")
             logger.debug("Cache INVALIDATE for key: %s (deleted=%d)", key, result)
-            return result > 0
+            return bool(result > 0)
         except Exception as exc:
             logger.warning("Redis DELETE error for %s: %s", key, exc)
             return False

@@ -100,11 +100,12 @@ class MetadataRepository:
         if self._cache is not None:
             await self._cache.invalidate(url)
 
-        return result.deleted_count > 0
+        return bool(result.deleted_count > 0)
 
     async def count(self) -> int:
         """Return the total number of metadata records."""
-        return await self._collection.count_documents({})
+        count: int = await self._collection.count_documents({})
+        return count
 
     async def list_metadata(
         self,

@@ -163,7 +163,7 @@ class SecurityAnalyzer:
                 recommendation="Ensure a valid SSL/TLS certificate is installed and not expired.",
             ))
         elif ssl_info and ssl_info.get("days_until_expiry") is not None:
-            days = ssl_info["days_until_expiry"]
+            days = int(ssl_info["days_until_expiry"])  # type: ignore[call-overload]
             if days < 0:
                 findings.append(SecurityFinding(
                     category="ssl",
@@ -212,7 +212,7 @@ class SecurityAnalyzer:
         self, headers: dict[str, str]
     ) -> list[SecurityFinding]:
         """Check for missing or misconfigured security headers."""
-        findings = []
+        findings: list[SecurityFinding] = []
 
         for header_name, severity, title, description, recommendation in SECURITY_HEADERS:
             if header_name not in headers:
@@ -226,8 +226,7 @@ class SecurityAnalyzer:
 
         # Check for insecure HSTS configuration
         hsts = headers.get("strict-transport-security", "")
-        if hsts:
-            if "includesubdomains" not in hsts.lower():
+        if hsts and "includesubdomains" not in hsts.lower():
                 findings.append(SecurityFinding(
                     category="header",
                     severity="low",
@@ -242,7 +241,7 @@ class SecurityAnalyzer:
         self, cookies: dict[str, str], headers: dict[str, str]
     ) -> list[SecurityFinding]:
         """Analyze cookies for security flag compliance."""
-        findings = []
+        findings: list[SecurityFinding] = []
 
         # Parse Set-Cookie headers for flag analysis
         set_cookie_headers = []
@@ -305,7 +304,7 @@ class SecurityAnalyzer:
 
     def _detect_technologies(self, headers: dict[str, str]) -> list[str]:
         """Extract technology information from response headers."""
-        technologies = []
+        technologies: list[str] = []
 
         for header in TECH_HEADERS:
             value = headers.get(header)
@@ -314,7 +313,7 @@ class SecurityAnalyzer:
 
         return technologies
 
-    def _check_ssl(self, url: str) -> dict | None:
+    def _check_ssl(self, url: str) -> dict[str, object] | None:
         """
         Check SSL/TLS certificate details for HTTPS URLs.
 
@@ -329,25 +328,29 @@ class SecurityAnalyzer:
 
         try:
             context = ssl.create_default_context()
-            with socket.create_connection((hostname, port), timeout=10) as sock:
-                with context.wrap_socket(sock, server_hostname=hostname) as ssock:
-                    cert = ssock.getpeercert()
+            with (
+                socket.create_connection((hostname, port), timeout=10) as sock,
+                context.wrap_socket(sock, server_hostname=hostname) as ssock,
+            ):
+                cert = ssock.getpeercert()
 
             if not cert:
                 return {"error": "No certificate returned"}
 
             # Parse expiry
-            not_after = cert.get("notAfter", "")
-            not_before = cert.get("notBefore", "")
+            not_after = str(cert.get("notAfter", ""))
+            not_before = str(cert.get("notBefore", ""))
 
             # Parse issuer
             issuer_parts = cert.get("issuer", ())
             issuer = ""
-            for part in issuer_parts:
-                for key, value in part:
-                    if key == "organizationName":
-                        issuer = value
-                        break
+            if isinstance(issuer_parts, tuple):
+                for part in issuer_parts:
+                    if isinstance(part, tuple):
+                        for entry in part:
+                            if isinstance(entry, tuple) and len(entry) == 2 and entry[0] == "organizationName":
+                                issuer = str(entry[1])
+                                break
 
             # Calculate days until expiry
             try:
@@ -360,11 +363,13 @@ class SecurityAnalyzer:
             # Subject
             subject_parts = cert.get("subject", ())
             subject = ""
-            for part in subject_parts:
-                for key, value in part:
-                    if key == "commonName":
-                        subject = value
-                        break
+            if isinstance(subject_parts, tuple):
+                for part in subject_parts:
+                    if isinstance(part, tuple):
+                        for entry in part:
+                            if isinstance(entry, tuple) and len(entry) == 2 and entry[0] == "commonName":
+                                subject = str(entry[1])
+                                break
 
             return {
                 "subject": subject,
@@ -378,7 +383,7 @@ class SecurityAnalyzer:
 
         except ssl.SSLCertVerificationError as exc:
             return {"error": f"Certificate verification failed: {exc}"}
-        except TimeoutError:
+        except (TimeoutError, OSError):
             return {"error": "Connection timed out during SSL handshake"}
         except Exception as exc:
             logger.warning("SSL check failed for %s: %s", url, exc)
@@ -400,16 +405,15 @@ class SecurityAnalyzer:
         """Convert a numerical score to a letter grade."""
         if score >= 95:
             return "A+"
-        elif score >= 85:
+        if score >= 85:
             return "A"
-        elif score >= 75:
+        if score >= 75:
             return "B"
-        elif score >= 60:
+        if score >= 60:
             return "C"
-        elif score >= 40:
+        if score >= 40:
             return "D"
-        else:
-            return "F"
+        return "F"
 
     def _summarize_findings(
         self, findings: list[SecurityFinding]

@@ -7,6 +7,7 @@ Provides a live, bidirectional connection where clients can:
 3. Get immediate error feedback for failed collections
 """
 
+import contextlib
 import json
 import logging
 from datetime import UTC, datetime
@@ -106,7 +107,5 @@ async def websocket_collect(websocket: WebSocket):
         logger.info("WebSocket connection closed")
     except Exception:
         logger.exception("WebSocket unexpected error")
-        try:
+        with contextlib.suppress(Exception):
             await websocket.close()
-        except Exception:
-            pass

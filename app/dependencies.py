@@ -15,14 +15,17 @@ from app.services.background import BackgroundTaskManager
 
 def get_repository(request: Request) -> MetadataRepository:
     """Retrieve the MetadataRepository from application state."""
-    return request.app.state.repository
+    repo: MetadataRepository = request.app.state.repository
+    return repo
 
 
 def get_task_manager(request: Request) -> BackgroundTaskManager:
     """Retrieve the BackgroundTaskManager from application state."""
-    return request.app.state.task_manager
+    mgr: BackgroundTaskManager = request.app.state.task_manager
+    return mgr
 
 
 def get_cache(request: Request) -> RedisCache:
     """Retrieve the RedisCache from application state."""
-    return request.app.state.cache
+    cache: RedisCache = request.app.state.cache
+    return cache

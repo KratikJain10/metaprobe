@@ -83,7 +83,7 @@ async def create_metadata(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Failed to collect metadata: {exc.reason}",
-        )
+        ) from exc
 
     await repo.upsert_metadata(document)
     logger.info("POST /metadata — stored metadata for %s", url)
@@ -123,7 +123,7 @@ async def get_metadata(
     ),
     repo: MetadataRepository = Depends(get_repository),
     task_manager: BackgroundTaskManager = Depends(get_task_manager),
-) -> MetadataResponse | AcceptedResponse:
+) -> MetadataResponse | AcceptedResponse | JSONResponse:
     """Retrieve metadata for a URL, or schedule background collection."""
     _validate_url(url)
 
@@ -290,7 +290,7 @@ async def bulk_collect(
             try:
                 document = await collect_metadata(url)
                 await repo.upsert_metadata(document)
-                return BulkResultItem(url=url, status="success")
+                return BulkResultItem(url=url, status="success", error=None)
             except CollectionError as exc:
                 return BulkResultItem(url=url, status="failed", error=exc.reason)
             except Exception as exc:
@@ -300,7 +300,7 @@ async def bulk_collect(
 
     urls = [str(u) for u in request.urls]
     tasks = [_collect_one(url) for url in urls]
-    results = await asyncio.gather(*tasks)
+    results = list(await asyncio.gather(*tasks))
 
     succeeded = sum(1 for r in results if r.status == "success")
     failed = sum(1 for r in results if r.status == "failed")

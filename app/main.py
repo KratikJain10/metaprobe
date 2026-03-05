@@ -24,6 +24,7 @@ from slowapi.util import get_remote_address
 from app.cache import RedisCache
 from app.config import settings
 from app.database import close_mongodb_connection, connect_to_mongodb
+from app.metrics import setup_metrics
 from app.middleware import CorrelationIdMiddleware, TimingMiddleware
 from app.repositories.metadata_repo import MetadataRepository
 from app.routes.metadata import router as metadata_router
@@ -116,11 +117,9 @@ app.add_middleware(
 
 # Rate limiting
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 # ── Prometheus Metrics ─────────────────────────────────────────────────────
-from app.metrics import setup_metrics
-
 setup_metrics(app)
 
 # ── Register Routes ────────────────────────────────────────────────────────
