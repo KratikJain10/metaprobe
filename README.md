@@ -26,51 +26,9 @@
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    subgraph Client["🌐 Client"]
-        HTTP["HTTP / WebSocket"]
-    end
-
-    subgraph Middleware["⚙️ Middleware Stack"]
-        direction LR
-        CORS["CORS"] --> CID["Correlation ID"] --> Timer["Timing"] --> RL["Rate Limiter"] --> Prom["Prometheus"]
-    end
-
-    subgraph Routes["📡 API Routes"]
-        direction LR
-        META["POST/GET/DELETE\n/metadata"]
-        BULK["POST /metadata/bulk\nGET /metadata/list\nGET /metadata/export"]
-        ANALYZE["POST/GET\n/analyze"]
-        WS["WS /ws/collect"]
-        SYS["GET /health\nGET /metrics"]
-    end
-
-    subgraph Services["🔧 Service Layer"]
-        direction LR
-        COL["Metadata\nCollector\n(httpx async)"]
-        BG["Background\nTask Manager\n(asyncio + dedup)"]
-        SEC["Security\nAnalyzer\n(A+ to F grading)"]
-    end
-
-    subgraph Repo["📂 Repository Layer"]
-        REPO["MetadataRepository\n(cache-aside pattern)"]
-    end
-
-    subgraph Data["💾 Data Stores"]
-        direction LR
-        MONGO[("MongoDB 7\n(indexed on url)")]
-        REDIS[("Redis 7\n(TTL + LRU)")]
-    end
-
-    HTTP --> Middleware --> Routes
-    META & BULK --> COL & BG
-    ANALYZE --> SEC
-    WS --> COL
-    COL & BG & SEC --> REPO
-    REPO --> MONGO
-    REPO --> REDIS
-```
+<p align="center">
+  <img src="docs/architecture.png" alt="Metaprobe Architecture" width="700" />
+</p>
 
 
 ---
