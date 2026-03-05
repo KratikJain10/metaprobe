@@ -30,9 +30,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
     response headers for end-to-end tracing.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         correlation_id = request.headers.get(CORRELATION_ID_HEADER, str(uuid.uuid4()))
         # Store on request state for downstream access
         request.state.correlation_id = correlation_id
@@ -49,9 +47,7 @@ class TimingMiddleware(BaseHTTPMiddleware):
     Value is in milliseconds, rounded to 2 decimal places.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start = time.perf_counter()
         response = await call_next(request)
         duration_ms = (time.perf_counter() - start) * 1000

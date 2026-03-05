@@ -34,9 +34,7 @@ async def connect_to_mongodb(
 
     for attempt in range(1, max_retries + 1):
         try:
-            logger.info(
-                "Connecting to MongoDB (attempt %d/%d)...", attempt, max_retries
-            )
+            logger.info("Connecting to MongoDB (attempt %d/%d)...", attempt, max_retries)
             _client = AsyncIOMotorClient(
                 settings.MONGO_URI,
                 serverSelectionTimeoutMS=5000,
@@ -57,9 +55,7 @@ async def connect_to_mongodb(
                 raise exc
 
             delay = base_delay * (2 ** (attempt - 1))
-            logger.warning(
-                "MongoDB not ready, retrying in %.1fs... (%s)", delay, exc
-            )
+            logger.warning("MongoDB not ready, retrying in %.1fs... (%s)", delay, exc)
             await asyncio.sleep(delay)
 
 

@@ -71,9 +71,7 @@ class TestCollectMetadata:
                 headers={"location": final_url},
             )
         )
-        respx.get(final_url).mock(
-            return_value=Response(200, text=final_html)
-        )
+        respx.get(final_url).mock(return_value=Response(200, text=final_html))
 
         result = await collect_metadata(url)
         assert result.page_source == final_html

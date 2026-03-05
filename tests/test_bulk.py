@@ -2,6 +2,8 @@
 Tests for bulk collection and pagination endpoints.
 """
 
+from datetime import UTC
+
 import pytest
 import respx
 from httpx import Response
@@ -20,7 +22,9 @@ class TestBulkCollect:
 
         for url in urls:
             respx.get(url).mock(
-                return_value=Response(200, text="<html></html>", headers={"content-type": "text/html"})
+                return_value=Response(
+                    200, text="<html></html>", headers={"content-type": "text/html"}
+                )
             )
 
         response = await test_client.post(
@@ -40,9 +44,7 @@ class TestBulkCollect:
         """Bulk collect should handle partial failures."""
         import httpx
 
-        respx.get("https://good.example.com").mock(
-            return_value=Response(200, text="<html></html>")
-        )
+        respx.get("https://good.example.com").mock(return_value=Response(200, text="<html></html>"))
         respx.get("https://bad.example.com").mock(
             side_effect=httpx.ConnectError("connection refused")
         )
@@ -77,14 +79,14 @@ class TestListMetadata:
 
     async def test_list_with_data(self, test_client, repository):
         """List should return stored metadata."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         doc = MetadataDocument(
             url="https://listed.example.com",
             headers={"content-type": "text/html"},
             cookies={},
             page_source="<html></html>",
-            collected_at=datetime.now(timezone.utc),
+            collected_at=datetime.now(UTC),
         )
         await repository.upsert_metadata(doc)
 
@@ -97,7 +99,7 @@ class TestListMetadata:
 
     async def test_list_pagination(self, test_client, repository):
         """Pagination should limit results correctly."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         for i in range(5):
             doc = MetadataDocument(
@@ -105,7 +107,7 @@ class TestListMetadata:
                 headers={},
                 cookies={},
                 page_source="",
-                collected_at=datetime.now(timezone.utc),
+                collected_at=datetime.now(UTC),
             )
             await repository.upsert_metadata(doc)
 
@@ -117,12 +119,15 @@ class TestListMetadata:
 
     async def test_list_search_filter(self, test_client, repository):
         """Search should filter by URL substring."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         for url in ["https://apple.example.com", "https://banana.example.com"]:
             doc = MetadataDocument(
-                url=url, headers={}, cookies={}, page_source="",
-                collected_at=datetime.now(timezone.utc),
+                url=url,
+                headers={},
+                cookies={},
+                page_source="",
+                collected_at=datetime.now(UTC),
             )
             await repository.upsert_metadata(doc)
 
@@ -138,18 +143,20 @@ class TestDeleteMetadata:
 
     async def test_delete_existing(self, test_client, repository):
         """Delete should remove stored metadata and return success."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         url = "https://delete-me.example.com"
         doc = MetadataDocument(
-            url=url, headers={}, cookies={}, page_source="",
-            collected_at=datetime.now(timezone.utc),
+            url=url,
+            headers={},
+            cookies={},
+            page_source="",
+            collected_at=datetime.now(UTC),
         )
         await repository.upsert_metadata(doc)
 
         response = await test_client.delete("/metadata", params={"url": url})
-        assert response.status_code == 200
-        assert "deleted" in response.json()["message"].lower()
+        assert response.status_code == 204
 
     async def test_delete_nonexistent_returns_404(self, test_client):
         """Delete should return 404 for non-existent URL."""
@@ -165,14 +172,14 @@ class TestExportMetadata:
 
     async def test_export_json(self, test_client, repository):
         """Export in JSON should return valid JSON array."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         doc = MetadataDocument(
             url="https://export.example.com",
             headers={"content-type": "text/html"},
             cookies={},
             page_source="<html></html>",
-            collected_at=datetime.now(timezone.utc),
+            collected_at=datetime.now(UTC),
         )
         await repository.upsert_metadata(doc)
 
@@ -184,14 +191,14 @@ class TestExportMetadata:
 
     async def test_export_csv(self, test_client, repository):
         """Export in CSV should return CSV content."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         doc = MetadataDocument(
             url="https://csvexport.example.com",
             headers={"content-type": "text/html"},
             cookies={},
             page_source="<html></html>",
-            collected_at=datetime.now(timezone.utc),
+            collected_at=datetime.now(UTC),
         )
         await repository.upsert_metadata(doc)
 

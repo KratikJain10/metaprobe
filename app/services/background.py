@@ -70,9 +70,7 @@ class BackgroundTaskManager:
             logger.info("Background collection completed for %s", url)
 
         except CollectionError as exc:
-            logger.error(
-                "Background collection failed for %s: %s", url, exc.reason
-            )
+            logger.error("Background collection failed for %s: %s", url, exc.reason)
         except Exception:
             logger.exception("Unexpected error during background collection for %s", url)
 
@@ -118,4 +116,3 @@ class BackgroundTaskManager:
         if task is not None and not task.done():
             return "pending"
         return "not_found"
-

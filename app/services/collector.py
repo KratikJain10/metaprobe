@@ -8,7 +8,7 @@ is retrieved.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -52,10 +52,7 @@ async def collect_metadata(url: str) -> MetadataDocument:
             headers = dict(response.headers)
 
             # Extract cookies as a flat dict
-            cookies = {
-                name: value
-                for name, value in response.cookies.items()
-            }
+            cookies = {name: value for name, value in response.cookies.items()}
 
             # Page source is the full response body text
             page_source = response.text
@@ -65,7 +62,7 @@ async def collect_metadata(url: str) -> MetadataDocument:
                 headers=headers,
                 cookies=cookies,
                 page_source=page_source,
-                collected_at=datetime.now(timezone.utc),
+                collected_at=datetime.now(UTC),
             )
 
             logger.info(

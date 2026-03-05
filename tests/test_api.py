@@ -6,7 +6,7 @@ the FastAPI test client with a mock MongoDB backend.
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 import respx
@@ -90,7 +90,7 @@ class TestGetMetadata:
             headers={"content-type": "text/html"},
             cookies={},
             page_source=html,
-            collected_at=datetime.now(timezone.utc),
+            collected_at=datetime.now(UTC),
         )
         await repository.upsert_metadata(doc)
 

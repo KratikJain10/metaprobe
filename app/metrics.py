@@ -5,8 +5,8 @@ Provides automatic HTTP metrics collection and custom
 application-specific counters and histograms.
 """
 
+from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
-from prometheus_client import Counter, Histogram, Gauge
 
 # ── Custom Metrics ──────────────────────────────────────────────────────────
 

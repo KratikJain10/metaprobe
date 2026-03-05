@@ -8,10 +8,9 @@ Provides:
 - FastAPI test client
 """
 
-import asyncio
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from datetime import UTC
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from mongomock_motor import AsyncMongoMockClient
@@ -20,9 +19,6 @@ from app.cache import RedisCache
 from app.models.schemas import MetadataDocument
 from app.repositories.metadata_repo import MetadataRepository
 from app.services.background import BackgroundTaskManager
-
-
-
 
 
 @pytest_asyncio.fixture
@@ -78,7 +74,7 @@ async def test_client(mock_db, mock_cache, repository, task_manager) -> AsyncGen
 
     # Inject test dependencies into app state
     app.state.repository = repository
-    app.state.task_manager = task_manager
+    app.state.background_tasks = task_manager
     app.state.cache = mock_cache
 
     transport = ASGITransport(app=app)
@@ -89,7 +85,7 @@ async def test_client(mock_db, mock_cache, repository, task_manager) -> AsyncGen
 @pytest_asyncio.fixture
 async def sample_metadata() -> MetadataDocument:
     """Provide a sample MetadataDocument for testing."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     return MetadataDocument(
         url="https://example.com",
@@ -100,5 +96,5 @@ async def sample_metadata() -> MetadataDocument:
         },
         cookies={"session": "abc123"},
         page_source="<!doctype html><html><head><title>Example</title></head></html>",
-        collected_at=datetime(2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc),
+        collected_at=datetime(2026, 3, 3, 12, 0, 0, tzinfo=UTC),
     )

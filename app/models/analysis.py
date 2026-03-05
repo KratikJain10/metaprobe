@@ -72,28 +72,30 @@ class SecurityReport(BaseModel):
         description="Timestamp of the analysis.",
     )
 
-    model_config = {"json_schema_extra": {
-        "examples": [
-            {
-                "url": "https://example.com",
-                "grade": "C",
-                "score": 55,
-                "findings": [
-                    {
-                        "category": "header",
-                        "severity": "high",
-                        "title": "Missing Content-Security-Policy",
-                        "description": "No CSP header detected.",
-                        "recommendation": "Add a Content-Security-Policy header.",
-                    }
-                ],
-                "summary": {"critical": 0, "high": 1, "medium": 2, "low": 1, "info": 1},
-                "technologies": ["cloudflare"],
-                "ssl_info": {"issuer": "DigiCert", "expires": "2027-01-01"},
-                "analyzed_at": "2026-03-05T12:00:00Z",
-            }
-        ]
-    }}
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "url": "https://example.com",
+                    "grade": "C",
+                    "score": 55,
+                    "findings": [
+                        {
+                            "category": "header",
+                            "severity": "high",
+                            "title": "Missing Content-Security-Policy",
+                            "description": "No CSP header detected.",
+                            "recommendation": "Add a Content-Security-Policy header.",
+                        }
+                    ],
+                    "summary": {"critical": 0, "high": 1, "medium": 2, "low": 1, "info": 1},
+                    "technologies": ["cloudflare"],
+                    "ssl_info": {"issuer": "DigiCert", "expires": "2027-01-01"},
+                    "analyzed_at": "2026-03-05T12:00:00Z",
+                }
+            ]
+        }
+    }
 
 
 class AnalyzeRequest(BaseModel):

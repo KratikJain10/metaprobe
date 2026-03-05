@@ -5,11 +5,10 @@ Provides strict type-checked schemas for the API layer,
 ensuring data integrity between client ↔ API ↔ database.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field, HttpUrl
-
 
 # ── Request Models ──────────────────────────────────────────────────────────
 
@@ -60,17 +59,19 @@ class MetadataResponse(BaseModel):
         description="Timestamp when the metadata was collected.",
     )
 
-    model_config = {"json_schema_extra": {
-        "examples": [
-            {
-                "url": "https://example.com",
-                "headers": {"content-type": "text/html; charset=UTF-8"},
-                "cookies": {},
-                "page_source": "<!doctype html>...",
-                "collected_at": "2026-03-03T18:00:00Z",
-            }
-        ]
-    }}
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "url": "https://example.com",
+                    "headers": {"content-type": "text/html; charset=UTF-8"},
+                    "cookies": {},
+                    "page_source": "<!doctype html>...",
+                    "collected_at": "2026-03-03T18:00:00Z",
+                }
+            ]
+        }
+    }
 
 
 class AcceptedResponse(BaseModel):
@@ -126,9 +127,7 @@ class BulkResultItem(BaseModel):
     """Result for a single URL in a bulk collection."""
 
     url: str = Field(..., description="The target URL.")
-    status: str = Field(
-        ..., description="'success' or 'failed'."
-    )
+    status: str = Field(..., description="'success' or 'failed'.")
     error: str | None = Field(None, description="Error message if failed.")
 
 
@@ -138,9 +137,7 @@ class BulkResponse(BaseModel):
     total: int = Field(..., description="Total URLs submitted.")
     succeeded: int = Field(..., description="Successful collections.")
     failed: int = Field(..., description="Failed collections.")
-    results: list[BulkResultItem] = Field(
-        default_factory=list, description="Per-URL results."
-    )
+    results: list[BulkResultItem] = Field(default_factory=list, description="Per-URL results.")
 
 
 # ── Internal / Database Models ──────────────────────────────────────────────
@@ -158,7 +155,7 @@ class MetadataDocument(BaseModel):
     headers: dict[str, str] = Field(default_factory=dict)
     cookies: dict[str, str] = Field(default_factory=dict)
     page_source: str = ""
-    collected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    collected_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def to_mongo_dict(self) -> dict[str, Any]:
         """Serialize to a dict suitable for MongoDB insertion."""

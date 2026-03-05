@@ -4,6 +4,8 @@ Integration tests for the security analysis API endpoints.
 Tests the full POST /analyze and GET /analyze flow.
 """
 
+from datetime import UTC
+
 import pytest
 import respx
 from httpx import Response
@@ -75,7 +77,7 @@ class TestGetAnalyze:
 
     async def test_analyze_stored_metadata(self, test_client, repository):
         """GET /analyze with stored metadata should return analysis."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         url = "https://stored.example.com"
         doc = MetadataDocument(
@@ -83,7 +85,7 @@ class TestGetAnalyze:
             headers={"content-type": "text/html", "x-frame-options": "DENY"},
             cookies={},
             page_source="<html></html>",
-            collected_at=datetime.now(timezone.utc),
+            collected_at=datetime.now(UTC),
         )
         await repository.upsert_metadata(doc)
 

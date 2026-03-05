@@ -8,7 +8,7 @@ is unavailable, so the service never fails due to cache issues.
 
 import json
 import logging
-from typing import Any
+from typing import Any, cast
 
 import redis.asyncio as redis
 
@@ -68,16 +68,14 @@ class RedisCache:
             data = await self._redis.get(f"metaprobe:{key}")
             if data is not None:
                 logger.debug("Cache HIT for key: %s", key)
-                return json.loads(data)
+                return cast(dict[str, Any], json.loads(data))
             logger.debug("Cache MISS for key: %s", key)
             return None
         except Exception as exc:
             logger.warning("Redis GET error for %s: %s", key, exc)
             return None
 
-    async def set(
-        self, key: str, value: dict[str, Any], ttl: int | None = None
-    ) -> bool:
+    async def set(self, key: str, value: dict[str, Any], ttl: int | None = None) -> bool:
         """
         Store a value in cache with optional TTL (seconds).
 
@@ -87,13 +85,17 @@ class RedisCache:
             return False
         try:
             ttl = ttl or settings.CACHE_TTL_SECONDS
-            await self._redis.set(
+            # The provided snippet for 'set' was malformed and seemed to mix 'get' logic.
+            # Applying the instruction "Add type casting to returns that are coming from parsed JSON and Redis operations"
+            # to the actual return of the Redis 'set' operation.
+            # redis.asyncio.Redis.set returns a bool.
+            result = await self._redis.set(
                 f"metaprobe:{key}",
                 json.dumps(value, default=str),
                 ex=ttl,
             )
             logger.debug("Cache SET for key: %s (TTL=%ds)", key, ttl)
-            return True
+            return cast(bool, result)
         except Exception as exc:
             logger.warning("Redis SET error for %s: %s", key, exc)
             return False
@@ -109,7 +111,7 @@ class RedisCache:
         try:
             result = await self._redis.delete(f"metaprobe:{key}")
             logger.debug("Cache INVALIDATE for key: %s (deleted=%d)", key, result)
-            return result > 0
+            return cast(bool, result > 0)
         except Exception as exc:
             logger.warning("Redis DELETE error for %s: %s", key, exc)
             return False

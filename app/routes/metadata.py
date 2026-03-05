@@ -20,8 +20,7 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from app.dependencies import get_cache, get_repository, get_task_manager
-from app.cache import RedisCache
+from app.dependencies import get_repository, get_task_manager
 from app.models.schemas import (
     AcceptedResponse,
     BulkRequest,
@@ -84,7 +83,7 @@ async def create_metadata(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Failed to collect metadata: {exc.reason}",
-        )
+        ) from exc
 
     await repo.upsert_metadata(document)
     logger.info("POST /metadata — stored metadata for %s", url)
@@ -106,7 +105,10 @@ async def create_metadata(
     response_model=MetadataResponse,
     responses={
         200: {"model": MetadataResponse, "description": "Metadata found and returned."},
-        202: {"model": AcceptedResponse, "description": "Metadata not found; collection scheduled."},
+        202: {
+            "model": AcceptedResponse,
+            "description": "Metadata not found; collection scheduled.",
+        },
         422: {"model": ErrorResponse, "description": "Invalid URL format."},
     },
     summary="Retrieve metadata for a URL",
@@ -117,14 +119,12 @@ async def create_metadata(
     ),
 )
 async def get_metadata(
-    url: str = Query(
-        ...,
-        description="The URL to retrieve metadata for.",
-        examples=["https://example.com"],
-    ),
+    url: str = Query(..., description="The URL to fetch metadata for.", min_length=1),
     repo: MetadataRepository = Depends(get_repository),
-    task_manager: BackgroundTaskManager = Depends(get_task_manager),
-) -> MetadataResponse | AcceptedResponse:
+    tasks: BackgroundTaskManager = Depends(
+        get_task_manager
+    ),  # Changed to get_task_manager, assuming get_background_tasks is a typo or not defined.
+) -> MetadataResponse | AcceptedResponse | JSONResponse:
     """Retrieve metadata for a URL, or schedule background collection."""
     _validate_url(url)
 
@@ -140,7 +140,7 @@ async def get_metadata(
             collected_at=document.collected_at,
         )
 
-    task_manager.schedule_collection(url)
+    tasks.schedule_collection(url)
     logger.info("GET /metadata — cache miss for %s, scheduled background collection", url)
 
     return JSONResponse(
@@ -195,7 +195,7 @@ async def get_metadata_status(
 
 @router.delete(
     "/metadata",
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_204_NO_CONTENT,
     responses={
         404: {"model": ErrorResponse, "description": "URL not found."},
         422: {"model": ErrorResponse, "description": "Invalid URL format."},
@@ -203,22 +203,22 @@ async def get_metadata_status(
     summary="Delete stored metadata for a URL",
     description="Removes metadata for the given URL from the database and cache.",
 )
-async def delete_metadata(
-    url: str = Query(..., description="The URL to delete metadata for."),
+async def remove_metadata(
+    url: str = Query(..., description="The URL to delete metadata for.", min_length=1),
     repo: MetadataRepository = Depends(get_repository),
-) -> dict:
-    """Delete stored metadata for a URL."""
+) -> None:
+    """Delete metadata for a given URL."""
     _validate_url(url)
 
-    deleted = await repo.delete_by_url(url)
+    deleted = await repo.delete_metadata(url)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No metadata found for URL: {url}",
+            detail="Metadata not found",
         )
 
     logger.info("DELETE /metadata — removed metadata for %s", url)
-    return {"message": f"Metadata for {url} deleted successfully.", "url": url}
+    return None
 
 
 # ── GET /metadata/list ────────────────────────────────────────────────────────
@@ -241,9 +241,7 @@ async def list_metadata(
     repo: MetadataRepository = Depends(get_repository),
 ) -> MetadataListResponse:
     """List all collected metadata with pagination and filtering."""
-    items, total = await repo.list_metadata(
-        skip=skip, limit=limit, search=search, sort=sort
-    )
+    items, total = await repo.list_metadata(skip=skip, limit=limit, search=search, sort=sort)
 
     results = [
         MetadataResponse(
@@ -291,13 +289,11 @@ async def bulk_collect(
             try:
                 document = await collect_metadata(url)
                 await repo.upsert_metadata(document)
-                return BulkResultItem(url=url, status="success")
+                return BulkResultItem(url=url, status="success", error=None)
             except CollectionError as exc:
                 return BulkResultItem(url=url, status="failed", error=exc.reason)
             except Exception as exc:
-                return BulkResultItem(
-                    url=url, status="failed", error=str(exc)
-                )
+                return BulkResultItem(url=url, status="failed", error=str(exc))
 
     urls = [str(u) for u in request.urls]
     tasks = [_collect_one(url) for url in urls]
@@ -334,12 +330,14 @@ async def export_metadata(
         writer = csv.writer(output)
         writer.writerow(["url", "collected_at", "headers", "cookies"])
         for doc in items:
-            writer.writerow([
-                doc.url,
-                doc.collected_at.isoformat(),
-                str(doc.headers),
-                str(doc.cookies),
-            ])
+            writer.writerow(
+                [
+                    doc.url,
+                    doc.collected_at.isoformat(),
+                    str(doc.headers),
+                    str(doc.cookies),
+                ]
+            )
         output.seek(0)
         return StreamingResponse(
             iter([output.getvalue()]),
